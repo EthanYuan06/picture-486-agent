@@ -39,7 +39,7 @@ def search_pictures(query, top_k=5):
 
 
 def main():
-    query = "有一个黑色长发白色发带的女孩，叫安和昴，请帮我找出她的图片"
+    query = "找一个黑发的漂亮女孩子，她要带着笑脸"
     print(f"Query: {query}\n")
 
     results = search_pictures(query, top_k=3)

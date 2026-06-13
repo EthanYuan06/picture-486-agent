@@ -1,2 +1,8 @@
 /.env
 /chroma_data/
+/app/chroma_data/
+/app/test/chroma_data/
+/app/agent/chroma_data/
+/.langgraph_api/
+/.langgraph/
+/.venv/

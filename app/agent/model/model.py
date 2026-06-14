@@ -98,7 +98,7 @@ class DashScopeRerankModel:
         }
         
         data = {
-            "model": "qwen3-vl-rerank",
+            "entity": "qwen3-vl-rerank",
             "input": {
                 "query": query,
                 "documents": documents

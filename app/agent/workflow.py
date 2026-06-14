@@ -1,26 +1,15 @@
-"""
-LangGraph 多模态 RAG 单张对话工作流
-节点链路完整可见，支持 LangSmith Playground 直接调试
-
-__start__ → [_extract_input] → [intent_recognizer] → (条件边)
-  ├─ 检索意图 → [query_rewriter] → [multimodal_embedder] → [vector_retriever] → [reranker] → [response_generator]
-  └─ 闲聊意图 → [_direct_chat]
-→ [_format_output] → __end__
-"""
 from typing import List, Optional, Annotated, Sequence
 from typing_extensions import TypedDict
 import operator
-
 from langsmith import traceable
 from langchain_core.runnables import RunnableLambda
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langgraph.graph import StateGraph, END
-
 from app.agent.chroma import chroma_vector_store
 from app.agent.model.model import multi_embedding_model, deepseek_chat_model, rerank_model
-# 改动：导入配置和提示词模块
 from app.agent.config import workflow_config as config, parse_filters
+from app.config.redis_config import checkpointer
 from app.agent.prompts import (
     get_intent_recognition_prompt,
     get_image_rewrite_prompt,
@@ -550,7 +539,7 @@ def build_chat_workflow():
     # === 出口 ===
     builder.add_edge("_format_output", END)
 
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)
 
 
 # LangSmith / langgraph.json 指向此实例

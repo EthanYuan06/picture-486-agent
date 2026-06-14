@@ -4,6 +4,8 @@ from pathlib import Path
 import chromadb
 import dashscope
 import pymysql
+import schedule
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -61,24 +63,42 @@ def mark_vectorized(pic_id):
         conn.commit()
 
 
-def main():
-    if not os.getenv("DASHSCOPE_API_KEY"):
-        raise RuntimeError("缺少环境变量 DASHSCOPE_API_KEY")
-    collection = chromadb.PersistentClient(path=str(CHROMA_DIR)).get_or_create_collection(
-        name=COLLECTION_NAME
-    )
-    for pic in get_pics():
-        if not pic["thumbnailUrl"]:
-            continue
-        embedding, text, metadata = embed_picture(pic)
-        collection.upsert(
-            ids=[str(pic["id"])],
-            embeddings=[embedding],
-            documents=[text],  # 只存自然语言文本，不存JSON
-            metadatas=[metadata]  # 所有结构化信息在这里
+def vectorize_task():
+    """定时执行的向量化任务"""
+    try:
+        if not os.getenv("DASHSCOPE_API_KEY"):
+            raise RuntimeError("缺少环境变量 DASHSCOPE_API_KEY")
+        collection = chromadb.PersistentClient(path=str(CHROMA_DIR)).get_or_create_collection(
+            name=COLLECTION_NAME
         )
-        mark_vectorized(pic["id"])
-        print(f"✅vectorized {pic['name']}")
+        for pic in get_pics():
+            if not pic["thumbnailUrl"]:
+                continue
+            embedding, text, metadata = embed_picture(pic)
+            collection.upsert(
+                ids=[str(pic["id"])],
+                embeddings=[embedding],
+                documents=[text],  # 只存自然语言文本，不存JSON
+                metadatas=[metadata]  # 所有结构化信息在这里
+            )
+            mark_vectorized(pic["id"])
+            print(f"✅vectorized {pic['name']}")
+        print("✅ 向量化任务完成")
+    except Exception as e:
+        print(f"❌ 向量化任务失败: {e}")
+
+
+def main():
+    """启动定时任务调度器"""
+    # 设置每天20:10执行（测试用，确认后可自行修改）
+    schedule.every().day.at("02:00").do(vectorize_task)
+    
+    print("⏰ 定时任务已启动，每天 20:10 执行向量化操作")
+    
+    # 持续运行调度器
+    while True:
+        schedule.run_pending()
+        time.sleep(60)  # 每分钟检查一次
 
 
 if __name__ == "__main__":

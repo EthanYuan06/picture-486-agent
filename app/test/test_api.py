@@ -15,7 +15,12 @@ def test_create_thread():
     
     if response.status_code == 200:
         data = response.json()
-        return data["thread_id"]
+        # 适配统一响应格式：{"code": 200, "msg": "...", "data": {...}}
+        if data.get("code") == 200 and data.get("data"):
+            return data["data"]["thread_id"]
+        else:
+            print(f"❌ 响应格式异常: {data}")
+            return None
     return None
 
 
@@ -25,6 +30,12 @@ def test_check_thread(thread_id):
     response = requests.get(f"{BASE_URL}/check-thread/{thread_id}")
     print(f"状态码: {response.status_code}")
     print(f"响应: {response.json()}")
+    
+    # 验证响应格式
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("code") != 200:
+            print(f"️ 响应状态码异常: code={data.get('code')}")
 
 
 def test_chat(thread_id, query):
@@ -41,8 +52,13 @@ def test_chat(thread_id, query):
     
     if response.status_code == 200:
         data = response.json()
-        print(f"AI回复: {data['reply']}")
-        return True
+        # 适配统一响应格式：{"code": 200, "msg": "...", "data": {...}}
+        if data.get("code") == 200 and data.get("data"):
+            print(f"AI回复: {data['data']['reply']}")
+            return True
+        else:
+            print(f"❌ 响应格式异常: {data}")
+            return False
     else:
         print(f"错误: {response.text}")
         return False
@@ -54,6 +70,12 @@ def test_check_thread_after_chat(thread_id):
     response = requests.get(f"{BASE_URL}/check-thread/{thread_id}")
     print(f"状态码: {response.status_code}")
     print(f"响应: {response.json()}")
+    
+    # 验证响应格式
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("code") != 200:
+            print(f"⚠️ 响应状态码异常: code={data.get('code')}")
 
 
 def test_delete_thread(thread_id):
@@ -62,6 +84,12 @@ def test_delete_thread(thread_id):
     response = requests.delete(f"{BASE_URL}/delete-thread/{thread_id}")
     print(f"状态码: {response.status_code}")
     print(f"响应: {response.json()}")
+    
+    # 验证响应格式
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("code") != 200:
+            print(f"⚠️ 响应状态码异常: code={data.get('code')}")
 
 
 def test_check_thread_after_delete(thread_id):
@@ -70,6 +98,12 @@ def test_check_thread_after_delete(thread_id):
     response = requests.get(f"{BASE_URL}/check-thread/{thread_id}")
     print(f"状态码: {response.status_code}")
     print(f"响应: {response.json()}")
+    
+    # 验证响应格式
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("code") != 200:
+            print(f"⚠️ 响应状态码异常: code={data.get('code')}")
 
 
 if __name__ == "__main__":
@@ -84,13 +118,14 @@ if __name__ == "__main__":
         test_check_thread(thread_id)
         
         # 3. 进行对话
-        success = test_chat(thread_id, "你好，介绍一下你自己")
+        success = test_chat(thread_id, "你好，我是羽洛，介绍一下你自己")
         if not success:
             print("❌ 对话失败，终止测试")
             exit(1)
         
         # 4. 再次对话（测试多轮上下文）
         test_chat(thread_id, "你能帮我做什么？")
+        test_chat(thread_id, "请你回忆一下，我叫什么名字？")
         
         # 5. 校验会话（对话后应存在）
         test_check_thread_after_chat(thread_id)

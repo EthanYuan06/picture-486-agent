@@ -9,7 +9,12 @@ from langchain_deepseek import ChatDeepSeek
 load_dotenv()
 
 # 主模型初始化
-deepseek_chat_model = ChatDeepSeek(model="deepseek-v4-flash")
+# 改动：修正 DeepSeek 模型的 base_url，从 DASHSCOPE_BASE_URL 改为 DEEPSEEK_BASE_URL
+deepseek_chat_model = init_chat_model(
+    model="deepseek-v4-flash",
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url=os.getenv("DEEPSEEK_BASE_URL"),  # 改动：使用 DeepSeek 官方地址
+)
 
 # 多模态视觉模型初始化
 qwen_vision_model = init_chat_model(

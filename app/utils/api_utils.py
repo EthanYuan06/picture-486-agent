@@ -1,6 +1,9 @@
 """
 API 辅助工具函数
 """
+import json
+from typing import Any, Dict, Optional
+from app.common.logger import logger
 
 def extract_ai_reply(messages: list) -> str:
     """
@@ -35,3 +38,61 @@ def extract_ai_reply(messages: list) -> str:
             return content if isinstance(content, str) else ""
     
     return "抱歉，我没有理解您的问题"
+
+
+def safe_parse_json(data: Any) -> Dict[str, Any]:
+    """
+    安全地解析 JSON 数据（字符串或字典）
+    
+    Args:
+        data: 可能是 JSON 字符串或已经是字典的数据
+        
+    Returns:
+        解析后的字典，如果解析失败返回空字典
+    """
+    if isinstance(data, dict):
+        return data
+    
+    if isinstance(data, str):
+        try:
+            return json.loads(data)
+        except Exception as e:
+            logger.warning(f"[safe_parse_json] JSON解析失败: {str(e)}")
+            return {}
+    
+    # 其他类型尝试转为字符串再解析
+    try:
+        return json.loads(str(data))
+    except Exception as e:
+        logger.warning(f"[safe_parse_json] 数据类型转换失败: {str(e)}")
+        return {}
+
+
+def success_response(data=None, msg="success", code=200):
+    """
+    统一成功响应格式
+    
+    Args:
+        data: 业务数据
+        msg: 响应消息
+        code: 状态码
+        
+    Returns:
+        标准响应字典
+    """
+    return {"code": code, "msg": msg, "data": data}
+
+
+def error_response(msg="操作失败", code=500, data=None):
+    """
+    统一错误响应格式
+    
+    Args:
+        msg: 错误消息
+        code: 错误状态码
+        data: 额外数据（可选）
+        
+    Returns:
+        标准错误响应字典
+    """
+    return {"code": code, "msg": msg, "data": data}

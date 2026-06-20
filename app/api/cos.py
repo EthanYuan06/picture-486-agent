@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
+from app.utils.api_utils import success_response
 
 load_dotenv()
 router = APIRouter()
@@ -52,8 +53,10 @@ def get_presign_upload_url(filename: str):
     )
 
     # 返回上传 URL 和可访问的图片路径
-    return {
-        "uploadUrl": response,
-        "contentType": content_type,
-        "accessUrl": f"https://{COS_BUCKET}.cos.{region}.myqcloud.com/{filename}"
-    }
+    return success_response(
+        data={
+            "uploadUrl": response,
+            "contentType": content_type,
+            "accessUrl": f"https://{COS_BUCKET}.cos.{region}.myqcloud.com/{filename}"
+        }
+    )

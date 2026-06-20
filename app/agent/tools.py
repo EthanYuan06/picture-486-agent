@@ -6,7 +6,7 @@ from langchain_core.tools import tool
 from langchain_tavily import TavilySearch
 import dashscope
 from app.utils.anime_trace import get_error_message, format_anime_result
-from app.agent.chroma import chroma_vector_store
+from app.agent.chroma_init import chroma_vector_store
 from app.agent.model.model import multi_embedding_model
 
 load_dotenv()

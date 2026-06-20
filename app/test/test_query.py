@@ -1,5 +1,5 @@
 import chromadb
-from app.agent.chroma import chroma_vector_store
+from app.agent.chroma_init import chroma_vector_store
 from pathlib import Path
 
 CHROMA_DIR = Path(__file__).resolve().parent.parent / "chroma_data"

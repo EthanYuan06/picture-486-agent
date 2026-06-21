@@ -7,18 +7,27 @@ from langchain_core.messages import AIMessage
 
 # ===================== 出口格式化节点 =====================
 
-def _format_output(state: dict) -> dict:
+async def _format_output(state: dict) -> dict:
     """
     出口节点:将 response_text + response_images 转为 AIMessage (LangChain 标准格式)
+    支持图片上传场景：直接使用上游构建好的 response_text
+    
     Args:
-        state: 包含 response_text, response_images 的字典
+        state: 包含 response_text, response_images, callback_result 的字典
     Returns:
         {"messages": [AIMessage(content=[...])]} 使用标准图文格式
     """
-    # 构建标准 LangChain 图文消息格式
+    # 检查是否有图片上传回调结果
+    callback_result = state.get("callback_result")
+    
+    # 优先使用上游已构建的 response_text（图片上传场景）
+    response_text = state.get("response_text")
+    if callback_result and response_text:
+        return {"messages": [AIMessage(content=response_text)]}
+    
+    # 构建标准 LangChain 图文消息格式（检索/闲聊链路）
     content_parts = []
     
-    response_text = state.get("response_text")
     if response_text:
         content_parts.append({"type": "text", "text": response_text})
     

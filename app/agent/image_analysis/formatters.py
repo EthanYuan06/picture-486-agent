@@ -12,7 +12,7 @@ from app.common.logger import logger
 # ===================== 分析结果格式化节点 =====================
 
 @traceable(run_type="chain", name="analysis_response_formatter")  # 改动：添加 LangSmith 追踪
-def analysis_response_formatter(state: dict) -> dict:
+async def analysis_response_formatter(state: dict) -> dict:
     """
     通用图片分析结果格式化节点（改动：统一处理所有分析类型的结果）
     - 接收所有分析类型的 JSON 结果（anime_analysis | attraction | common）
@@ -38,7 +38,7 @@ def analysis_response_formatter(state: dict) -> dict:
     prompt = get_analysis_prompt_template(analysis_type, analysis_result)
     
     try:
-        resp = deepseek_chat_model.invoke(prompt)
+        resp = await deepseek_chat_model.ainvoke(prompt)
         response_text = resp.content.strip()
     except Exception as e:
         # 改动：记录异常并返回友好提示

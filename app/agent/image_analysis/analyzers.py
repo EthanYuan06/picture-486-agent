@@ -13,7 +13,7 @@ from app.utils.api_utils import safe_parse_json
 # ===================== 动漫分析节点 =====================
 
 @traceable(run_type="chain", name="anime_analyzer")
-def anime_analyzer(state: dict) -> dict:
+async def anime_analyzer(state: dict) -> dict:
     """
     动漫分析节点（直接调用工具，避免 Agent 循环和过度搜索）
     
@@ -189,7 +189,7 @@ def _generate_character_description(character: str, work: str) -> str:
 
 # ===================== 占位节点（TODO）=====================
 
-def _attraction_placeholder(state: dict) -> dict:
+async def _attraction_placeholder(state: dict) -> dict:
     """
     风景识别占位节点（改动：返回标准JSON格式，供统一格式化节点处理）
     Returns:
@@ -207,7 +207,7 @@ def _attraction_placeholder(state: dict) -> dict:
     }
 
 
-def _common_placeholder(state: dict) -> dict:
+async def _common_placeholder(state: dict) -> dict:
     """
     通用图片分析占位节点（改动：返回标准JSON格式，供统一格式化节点处理）
     Returns:

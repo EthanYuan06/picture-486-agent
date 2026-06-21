@@ -22,7 +22,7 @@ from app.agent.prompts import (
 # ===================== 查询重写节点 =====================
 
 @traceable(run_type="chain", name="query_rewriter")  # 改动：添加 LangSmith 追踪
-def query_rewriter(state: dict) -> dict:
+async def query_rewriter(state: dict) -> dict:
     """
     节点2：查询重写 + 数量提取
     调用 deepseek 文本模型将用户自然语言改写为检索关键词，并提取期望返回的图片数量
@@ -42,7 +42,7 @@ def query_rewriter(state: dict) -> dict:
         prompt = get_text_rewrite_prompt(query)
     
     try:
-        resp = deepseek_chat_model.invoke(prompt)
+        resp = await deepseek_chat_model.ainvoke(prompt)
         result = resp.content.strip()
         
         # 解析输出
@@ -77,7 +77,7 @@ def query_rewriter(state: dict) -> dict:
 # ===================== 多模态向量化节点 =====================
 
 @traceable(run_type="embed", name="multimodal_embedder")  # 改动：添加 LangSmith 追踪
-def multimodal_embedder(state: dict) -> dict:
+async def multimodal_embedder(state: dict) -> dict:
     """
     节点3：向量化
     - 图文检索：调用 embed_multimodal（重写后关键词 + 图片融合向量）
@@ -105,7 +105,7 @@ def multimodal_embedder(state: dict) -> dict:
 # ===================== 向量检索节点 =====================
 
 @traceable(run_type="retriever", name="vector_retriever")  # 改动：添加 LangSmith 追踪
-def vector_retriever(state: dict) -> dict:
+async def vector_retriever(state: dict) -> dict:
     """
     节点4：向量检索 + 元数据过滤
     - 文本检索：使用 LangChain MMR Retriever（内置嵌入+MMR，一步到位）
@@ -169,7 +169,7 @@ def vector_retriever(state: dict) -> dict:
 # ===================== 重排序节点 =====================
 
 @traceable(run_type="chain", name="reranker")  # 改动：添加 LangSmith 追踪
-def reranker(state: dict) -> dict:
+async def reranker(state: dict) -> dict:
     """
     节点5：多模态重排序
     - 纯文本检索：调用 DashScope qwen3-vl-rerank 对检索结果进行语义重排
@@ -228,7 +228,7 @@ def reranker(state: dict) -> dict:
 # ===================== 应答生成节点 =====================
 
 @traceable(run_type="chain", name="response_generator")  # 改动：添加 LangSmith 追踪
-def response_generator(state: dict) -> dict:
+async def response_generator(state: dict) -> dict:
     """
     节点6：应答生成
     调用 deepseek 文本模型整理检索结果，生成用户友好的回复
@@ -264,7 +264,7 @@ def response_generator(state: dict) -> dict:
     prompt = get_response_generation_prompt(user_q, context)
 
     try:
-        resp = deepseek_chat_model.invoke(prompt)
+        resp = await deepseek_chat_model.ainvoke(prompt)
         response_text = resp.content
     except Exception as e:
         # 改动：使用提示词模块的降级回复

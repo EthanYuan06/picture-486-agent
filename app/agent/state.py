@@ -38,6 +38,17 @@ class ChatState(TypedDict):
     # 图片分析相关字段
     analysis_type: Optional[str]  # 图片分析类型：attraction | anime_analysis | common
     analysis_result: Optional[dict]  # 图片分析结果（JSON格式）
+    
+    # 图片上传相关字段
+    user_id: Optional[int]  # 用户ID（从请求传入）
+    space_id: Optional[int]  # 相册ID（null表示公共图库）
+    callback_result: Optional[dict]  # 回调后端结果
+    
+    # HITL 人机交互确认相关字段
+    upload_confirmation: Optional[dict]  # 待确认的上传数据
+    user_confirmed: Optional[bool]  # 用户是否确认
+    modified_data: Optional[dict]  # 用户修改后的数据
+    confirmation_timestamp: Optional[float]  # 确认请求时间戳（用于超时判断）
 
 
 def init_chat_state() -> ChatState:
@@ -61,5 +72,12 @@ def init_chat_state() -> ChatState:
         "response_text": "",
         "response_images": [],
         "analysis_type": None,
-        "analysis_result": None
+        "analysis_result": None,
+        "user_id": None,
+        "space_id": None,
+        "callback_result": None,
+        "upload_confirmation": None,
+        "user_confirmed": None,
+        "modified_data": None,
+        "confirmation_timestamp": None
     }

@@ -3,8 +3,11 @@
 仅负责 LangGraph 图的构建、节点注册、边连接和编译
 所有业务逻辑已拆分到独立模块
 """
+import os
 from langchain_core.runnables import RunnableLambda
+from langchain_core.messages import AIMessage  # 改动：新增导入用于错误处理
 from langgraph.graph import StateGraph, END
+from app.common.logger import logger
 
 # 改动：从独立模块导入状态定义
 from app.agent.state import ChatState, init_chat_state
@@ -27,9 +30,25 @@ from app.agent.image_analysis import (
     _attraction_placeholder,
     _common_placeholder
 )
+# 新增：图片上传相关节点
+from app.agent.image_analysis.upload_analyzer import image_upload_analyzer
+from app.agent.image_analysis.upload_callback import image_upload_callback
 
 # 改动：导入 Redis checkpointer
 from app.config.redis_config import checkpointer
+
+
+# ===================== 错误处理节点 =====================
+
+def error_handler(state: dict) -> dict:
+    """
+    错误处理节点：当意图识别或其他节点发生错误时，返回友好提示
+    """
+    error_message = state.get("error_message", " 系统繁忙，请稍后重试")
+    return {
+        "response_text": error_message,
+        "messages": [AIMessage(content=error_message)]
+    }
 
 
 # ===================== 工作流构建函数 =====================
@@ -54,6 +73,13 @@ def build_chat_workflow():
     builder.add_node("analysis_response_formatter", analysis_response_formatter)
     builder.add_node("_attraction_placeholder", _attraction_placeholder)  # TODO
     builder.add_node("_common_placeholder", _common_placeholder)  # TODO
+    
+    # 新增：图片上传相关节点
+    builder.add_node("image_upload_analyzer", image_upload_analyzer)
+    builder.add_node("image_upload_callback", image_upload_callback)
+    
+    # 新增：错误处理节点
+    builder.add_node("error_handler", error_handler)
 
     # === 设置入口 ===
     builder.set_entry_point("intent_recognizer")
@@ -66,6 +92,8 @@ def build_chat_workflow():
             "retrieval_chain": "query_rewriter",   # 有检索意图 → 进入检索链路
             "chat_chain": "_direct_chat",           # 无检索意图 → 闲聊回复
             "image_analysis_chain": "image_analysis_router",  # 改动：修正键名为图片分析分支
+            "image_upload_chain": "image_upload_analyzer",  # 新增：图片上传分支
+            "error_handler": "error_handler"  # 新增：错误处理分支
         }
     )
 
@@ -103,12 +131,29 @@ def build_chat_workflow():
     
     # 格式化节点到出口
     builder.add_edge("analysis_response_formatter", "_format_output")
+    
+    # === 图片上传链路 ===
+    # 分析节点 → 回调节点 → 格式化节点
+    builder.add_edge("image_upload_analyzer", "image_upload_callback")
+    builder.add_edge("image_upload_callback", "_format_output")
+    
+    # === 错误处理链路 ===
+    # 错误处理节点 → 格式化节点
+    builder.add_edge("error_handler", "_format_output")
 
     # === 出口 ===
     builder.add_edge("_format_output", END)
 
-    return builder.compile(checkpointer=checkpointer)
-    # return builder.compile()
+    # HITL：根据环境变量决定是否启用中断机制
+    enable_hitl = os.getenv("ENABLE_HITL", "true").lower() == "true"
+    interrupt_nodes = ["image_upload_callback"] if enable_hitl else []
+    
+    logger.info(f"HITL 机制: {'启用' if enable_hitl else '禁用'} (ENABLE_HITL={os.getenv('ENABLE_HITL', 'true')})")
+
+    return builder.compile(
+        checkpointer=checkpointer,
+        interrupt_before=interrupt_nodes  # HITL：在回调前中断，等待用户确认
+    )
 
 # LangSmith / langgraph.json 指向此实例
 compiled_graph = build_chat_workflow()

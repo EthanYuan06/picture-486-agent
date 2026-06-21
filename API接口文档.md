@@ -105,7 +105,7 @@
 
 ### 3. 发送消息（对话交互）
 
-**接口说明**: 向AI助手发送消息，支持纯文本和图文混合输入
+**接口说明**: 向AI助手发送消息，支持纯文本、图文混合输入和**智能上传确认**
 
 - **请求方式**: `POST`
 - **请求路径**: `/api/chat`
@@ -117,8 +117,12 @@
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | thread_id | string | 是 | 会话ID |
-| query | string | 是 | 用户输入的文本内容 |
+| query | string | 是 | 用户输入的文本内容（第二次请求可为空字符串） |
 | image_url | string | 否 | 图片URL地址（在线图片或COS上传后的访问地址） |
+| user_id | integer | 否 | 用户ID（图片上传时使用） |
+| space_id | integer | 否 | 相册ID（null表示公共图库，数字表示个人相册ID） |
+| user_confirmed | boolean | 否 | HITL用户确认标志（true=确认上传，false=取消） |
+| modified_data | object | 否 | 用户修改后的数据（仅在user_confirmed=true时使用） |
 
 #### 请求示例
 
@@ -145,6 +149,52 @@
   "thread_id": "c285e95f-2f80-4327-9be7-063784a640ed",
   "query": "这是什么动漫角色？",
   "image_url": "https://your-bucket.cos.ap-guangzhou.myqcloud.com/uploads/anime.jpg"
+}
+```
+
+**场景4：智能上传 - 第一次请求（触发AI分析 + HITL中断）**
+```json
+{
+  "thread_id": "upload-1234567890",
+  "query": "这个女孩叫安和昴，请帮我上传到公共图库",
+  "image_url": "https://your-bucket.cos.ap-guangzhou.myqcloud.com/temp/photo.jpg",
+  "user_id": 1,
+  "space_id": null
+}
+```
+
+**场景5：智能上传 - 第二次请求（用户确认后继续）**
+```json
+{
+  "thread_id": "upload-1234567890",
+  "query": "",
+  "user_confirmed": true,
+  "modified_data": null
+}
+```
+
+**场景6：智能上传 - 修改后确认**
+```json
+{
+  "thread_id": "upload-1234567890",
+  "query": "",
+  "user_confirmed": true,
+  "modified_data": {
+    "name": "自定义名称",
+    "introduction": "自定义简介（50-500字）",
+    "category": "自定义分类",
+    "tags": ["标签1", "标签2", "标签3"],
+    "space_id": 100
+  }
+}
+```
+
+**场景7：智能上传 - 取消上传**
+```json
+{
+  "thread_id": "upload-1234567890",
+  "query": "",
+  "user_confirmed": false
 }
 ```
 

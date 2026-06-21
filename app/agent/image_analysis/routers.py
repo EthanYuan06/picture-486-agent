@@ -11,7 +11,7 @@ from app.common.logger import logger
 # ===================== 图片分析二级路由节点 =====================
 
 @traceable(run_type="chain", name="image_analysis_router")
-def image_analysis_router(state: dict) -> dict:
+async def image_analysis_router(state: dict) -> dict:
     """
     图片分析二级路由：调用 DeepSeek 判断图片类型
     输出：{"analysis_type": "attraction" | "anime_analysis" | "common"}
@@ -31,7 +31,7 @@ def image_analysis_router(state: dict) -> dict:
 """
     
     try:
-        resp = deepseek_chat_model.invoke(prompt)
+        resp = await deepseek_chat_model.ainvoke(prompt)
         analysis_type = resp.content.strip().lower()
         if analysis_type not in ["attraction", "anime_analysis", "common"]:
             analysis_type = "common"  # 兜底

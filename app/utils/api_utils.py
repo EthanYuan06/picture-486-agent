@@ -5,39 +5,59 @@ import json
 from typing import Any, Dict, Optional
 from app.common.logger import logger
 
-def extract_ai_reply(messages: list) -> str:
+def extract_ai_reply(messages: list) -> tuple[str, list[str]]:
     """
-    从 LangGraph 返回的 messages 中提取最后一条 AI 回复文本
+    从 LangGraph 返回的 messages 中提取最后一条 AI 回复文本和图片URL
     
     Args:
         messages: 消息列表（可能包含字典或 BaseMessage 对象）
     
     Returns:
-        AI 回复的文本内容
+        (text, image_urls): AI 回复的文本内容和图片URL列表
     """
     if not messages:
-        return "抱歉，我没有理解您的问题"
+        return "抱歉，我没有理解您的问题", []
     
     # 倒序查找最后一条 AI 消息
     for msg in reversed(messages):
+        content = None
+        
         # 处理序列化字典格式
         if isinstance(msg, dict) and msg.get("type") == "ai":
             content = msg.get("content", "")
-            # 如果是图文混合格式（列表），提取文本部分
-            if isinstance(content, list):
-                text_parts = [item.get("text", "") for item in content if item.get("type") == "text"]
-                return "\n".join(text_parts) if text_parts else ""
-            return content if isinstance(content, str) else ""
         
         # 处理原生 AIMessage 对象
         elif hasattr(msg, 'content'):
             content = msg.content
-            if isinstance(content, list):
-                text_parts = [item.get("text", "") for item in content if item.get("type") == "text"]
-                return "\n".join(text_parts) if text_parts else ""
-            return content if isinstance(content, str) else ""
+        
+        if content is None:
+            continue
+        
+        # 如果是图文混合格式（列表）
+        if isinstance(content, list):
+            text_parts = []
+            image_urls = []
+            
+            for item in content:
+                if item.get("type") == "text":
+                    text_parts.append(item.get("text", ""))
+                elif item.get("type") == "image_url":
+                    # 提取图片URL
+                    image_url_obj = item.get("image_url", {})
+                    if isinstance(image_url_obj, dict):
+                        url = image_url_obj.get("url", "")
+                        if url:
+                            image_urls.append(url)
+                    elif isinstance(image_url_obj, str):
+                        image_urls.append(image_url_obj)
+            
+            return "\n".join(text_parts), image_urls
+        
+        # 纯文本格式
+        elif isinstance(content, str):
+            return content, []
     
-    return "抱歉，我没有理解您的问题"
+    return "抱歉，我没有理解您的问题", []
 
 
 def safe_parse_json(data: Any) -> Dict[str, Any]:

@@ -7,6 +7,7 @@ from app.common.logger import logger, setup_logging
 from app.config.redis_config import client as redis_client
 from app.api.chat import router as chat_router
 from app.api.cos import router as cos_router
+from app.api.chat_sse import router as chat_sse_router  # 新增：SSE流式接口
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,6 +62,7 @@ app.add_middleware(
 # 挂载路由（prefix 和 tags 在这里统一配置）
 app.include_router(chat_router, prefix="/api", tags=["会话管理"])
 app.include_router(cos_router, prefix="/api", tags=["云存储"])
+app.include_router(chat_sse_router, prefix="/api", tags=["SSE流式对话"])  # 新增：SSE流式接口
 
 
 if __name__ == "__main__":

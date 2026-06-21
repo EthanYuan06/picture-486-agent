@@ -43,11 +43,11 @@ def get_presign_upload_url(filename: str):
     ext = filename.split(".")[-1].lower() if "." in filename else "jpg"
     content_type = content_type_map.get(ext, "application/octet-stream")
 
-    # 生成预签名URL
+    # 生成预签名URL，上传到temp目录
     response = client.get_presigned_url(
         Method='PUT',
         Bucket=COS_BUCKET,
-        Key=filename,
+        Key=f'temp/{filename}',  # 上传到temp目录
         Expired=3600,  # 过期时间（秒）
         Headers={'Content-Type': content_type}
     )
@@ -57,6 +57,6 @@ def get_presign_upload_url(filename: str):
         data={
             "uploadUrl": response,
             "contentType": content_type,
-            "accessUrl": f"https://{COS_BUCKET}.cos.{region}.myqcloud.com/{filename}"
+            "accessUrl": f"https://{COS_BUCKET}.cos.{region}.myqcloud.com/temp/{filename}"
         }
     )

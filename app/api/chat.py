@@ -2,7 +2,8 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from app.common.logger import logger
 from app.config.redis_config import checkpointer
-from app.agent.workflow import compiled_graph, init_chat_state
+from app.agent.workflow import compiled_graph
+from app.agent.state import init_chat_state
 from app.entity.schema import ChatRequest
 from app.utils.api_utils import extract_ai_reply, success_response
 
@@ -131,13 +132,13 @@ async def chat(request: ChatRequest):
 # ===================== 接口4：删除会话 =====================
 
 @router.delete("/delete-thread/{thread_id}")
-def delete_thread(thread_id: str):
+async def delete_thread(thread_id: str):
     """
     删除指定会话的所有历史数据
-    调用 checkpointer.delete_thread() 清空该会话所有检查点
+    调用 checkpointer.adelete_thread() 清空该会话所有检查点
     """
-    # RedisSaver 的 delete_thread 方法直接接收 thread_id 字符串
-    checkpointer.delete_thread(thread_id)
+    # AsyncRedisSaver 的 adelete_thread 方法是异步的，需要 await
+    await checkpointer.adelete_thread(thread_id)
     
     logger.info(f"会话 {thread_id} 已删除")
     return success_response(

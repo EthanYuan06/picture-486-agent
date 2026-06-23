@@ -134,14 +134,29 @@ async def image_upload_callback(state: dict) -> dict:
             f"已保存到{'个人相册' if data.get('spaceId') or space_id else '公共图库'}"
         )
         
+        # ✅ 只保留可序列化的字段（避免 dataclass 等不可序列化对象）
+        callback_result = {
+            "code": result.get("code"),
+            "message": result.get("message"),
+            "data": {
+                "id": data.get("id"),
+                "url": data.get("url"),
+                "name": data.get("name"),
+                "category": data.get("category"),
+                "spaceId": data.get("spaceId")
+            }
+        }
+        
         return {
-            "callback_result": result,
+            "callback_result": callback_result,
             "response_text": success_msg
         }
         
     except Exception as e:
         logger.error(f"[image_upload_callback] 回调失败: {str(e)}")
         error_msg = f"❌ 上传失败：{str(e)}"
+        
+        # ✅ 确保返回可序列化的字典
         return {
             "callback_result": {
                 "code": -1,

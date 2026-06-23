@@ -16,5 +16,5 @@ ttl_config = {
 }
 
 # 创建异步 checkpointer（支持 astream/ainvoke）
-# 注意：AsyncRedisSaver 会在首次使用时自动初始化，无需手动调用 setup()
+# 注意：需要在应用启动时调用 await checkpointer.asetup() 初始化索引
 checkpointer = AsyncRedisSaver(redis_client=client, ttl=ttl_config)

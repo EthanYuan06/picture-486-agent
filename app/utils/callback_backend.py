@@ -140,7 +140,7 @@ async def _async_callback_backend(
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
-                    f"{backend_url}/api/picture/ai/callback",
+                    f"{backend_url}/api/picture/ai/upload/callback",
                     json=payload,
                     headers={"Content-Type": "application/json"}
                 )
@@ -157,8 +157,7 @@ async def _async_callback_backend(
                 # 检查业务状态码
                 if base_response.is_success():
                     logger.info(f"[回调成功] 图片ID: {base_response.data.id}, URL: {base_response.data.url}")
-                    # 保持向后兼容：仍返回原始dict格式，附加解析后的对象
-                    result["_parsed_data"] = base_response  # 可选：供未来使用
+                    # 返回原始dict格式（确保可序列化）
                     return result
                 else:
                     error_msg = base_response.message or "未知错误"

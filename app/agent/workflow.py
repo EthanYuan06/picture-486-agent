@@ -10,19 +10,19 @@ from langgraph.graph import StateGraph, END
 from app.common.logger import logger
 
 # 改动：从独立模块导入状态定义
-from app.agent.state import ChatState, init_chat_state
+from app.agent.state import ChatState
 
 # 改动：从独立模块导入所有业务节点
-from app.agent.routing import intent_recognizer, route_after_intent
-from app.agent.retrieval_chain import (
+from app.agent.chain.routing import intent_recognizer, route_after_intent
+from app.agent.chain.retrieval_chain import (
     query_rewriter,
     multimodal_embedder,
     vector_retriever,
     reranker,
     response_generator
 )
-from app.agent.chat_chain import _direct_chat
-from app.agent.output_nodes import _format_output
+from app.agent.chain.chat_chain import _direct_chat
+from app.agent.public_nodes.output_nodes import _format_output
 from app.agent.image_analysis import (
     image_analysis_router,
     anime_analyzer,

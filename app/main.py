@@ -2,27 +2,45 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import asyncio
 import uvicorn
 from app.common.logger import logger, setup_logging
-from app.config.redis_config import client as redis_client
+from app.config.redis_config import client as redis_client, checkpointer
 from app.api.chat import router as chat_router
 from app.api.cos import router as cos_router
 from app.api.chat_sse import router as chat_sse_router  # 新增：SSE流式接口
+from app.agent.ai_review.consumer import start_ai_review_consumer, stop_ai_review_consumer
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     FastAPI 生命周期管理
-    - 启动时：初始化日志，打印服务就绪信息
-    - 关闭时：释放 Redis 连接资源
+    - 启动时：初始化日志，初始化Redis索引，启动MQ消费者，打印服务就绪信息
+    - 关闭时：释放 Redis 连接资源，停止MQ消费者
     """
     # 启动阶段
     setup_logging()
+    
+    # 初始化 AsyncRedisSaver 索引（必须！）
+    try:
+        await checkpointer.asetup()
+        logger.info("Redis Checkpointer 索引初始化成功")
+    except Exception as e:
+        logger.error(f"Redis Checkpointer 索引初始化失败: {str(e)}", exc_info=True)
+        raise
+    
     logger.info("服务启动成功，Redis 连接已就绪")
+    
+    # 启动AI审核MQ消费者(后台任务)
+    ai_review_task = asyncio.create_task(start_ai_review_consumer())
+    logger.info("AI审核消费者已启动")
     
     yield
     
     # 关闭阶段
+    stop_ai_review_consumer()
+    logger.info("AI审核消费者已停止")
+    
     redis_client.close()
     logger.info("服务关闭，Redis 连接已释放")
 

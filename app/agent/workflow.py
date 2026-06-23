@@ -12,17 +12,20 @@ from app.common.logger import logger
 # 改动：从独立模块导入状态定义
 from app.agent.state import ChatState
 
-# 改动：从独立模块导入所有业务节点
-from app.agent.chain.routing import intent_recognizer, route_after_intent
-from app.agent.chain.retrieval_chain import (
+# 改动：从RAG模块导入意图识别和检索链路节点
+from app.agent.rag import (
+    intent_recognizer,
+    route_after_intent,
     query_rewriter,
     multimodal_embedder,
     vector_retriever,
     reranker,
     response_generator
 )
-from app.agent.chain.chat_chain import _direct_chat
+# 改动：从闲聊业务模块导入闲聊节点
+from app.agent.chat.nodes.direct_chat import _direct_chat
 from app.agent.public_nodes.output_nodes import _format_output
+# 改动：从图片内容分析模块导入节点
 from app.agent.image_analysis import (
     image_analysis_router,
     anime_analyzer,
@@ -30,9 +33,11 @@ from app.agent.image_analysis import (
     _attraction_placeholder,
     _common_placeholder
 )
-# 新增：图片上传相关节点
-from app.agent.image_analysis.upload_analyzer import image_upload_analyzer
-from app.agent.image_analysis.upload_callback import image_upload_callback
+# 改动：从智能上传模块导入节点
+from app.agent.image_upload import (
+    image_upload_analyzer,
+    image_upload_callback
+)
 
 # 改动：导入 Redis checkpointer
 from app.config.redis_config import checkpointer

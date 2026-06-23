@@ -9,7 +9,8 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langsmith import traceable
 
 from app.agent.model.model import qwen_vision_model
-from app.agent.prompts.image_upload_prompt import get_image_upload_analysis_prompt
+# 改动：从本地 prompts 目录导入提示词
+from app.agent.image_upload.prompts.image_upload_prompt import get_image_upload_analysis_prompt
 from app.common.logger import logger
 from app.utils.api_utils import safe_parse_json
 

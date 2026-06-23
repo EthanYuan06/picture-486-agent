@@ -7,10 +7,11 @@ from typing import List
 from langchain_core.documents import Document
 from langsmith import traceable
 
-from app.agent.chroma_init import chroma_vector_store
+from app.agent.config.chroma_config import chroma_vector_store
 from app.agent.config import workflow_config as config, parse_filters
 from app.agent.model.model import multi_embedding_model, deepseek_chat_model, rerank_model
-from app.agent.prompts import (
+# 改动：从本地 prompts 目录导入提示词
+from app.agent.rag.prompts import (
     get_image_rewrite_prompt,
     get_text_rewrite_prompt,
     get_response_generation_prompt,

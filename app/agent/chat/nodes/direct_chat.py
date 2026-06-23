@@ -1,11 +1,13 @@
 """
-昴云助手 - 闲聊模块
+昴云助手 - 闲聊节点模块
 负责纯闲聊对话逻辑
 """
 from langchain_core.messages import SystemMessage
 
+# 改动：从闲聊业务模块导入模型和提示词
 from app.agent.model.model import deepseek_chat_model
-from app.agent.prompts import get_system_prompt, get_fallback_chat_reply
+# 改动：直接导入提示词函数，无需经过 __init__.py
+from app.agent.chat.prompts.chat_prompt import get_system_prompt, get_fallback_chat_reply
 from app.common.logger import logger
 
 

@@ -9,7 +9,8 @@ from langsmith import traceable
 
 from app.agent.config import workflow_config as config
 from app.agent.model.model import qwen_vision_model  # 改动：从 deepseek_chat_model 改为 qwen_vision_model
-from app.agent.prompts import get_intent_recognition_prompt
+# 改动：从本地 prompts 目录导入提示词
+from app.agent.rag.prompts.intent_prompt import get_intent_recognition_prompt
 from app.common.logger import logger
 
 

@@ -11,7 +11,7 @@ from app.agent.config.workflow_config import (
     DEFAULT_EXPECTED_COUNT,
     CHAT_GUIDANCE,
 )
-from app.agent.config.workflow_util import parse_filters
+from app.utils.workflow_util import parse_filters
 
 __all__ = [
     "SEARCH_KEYWORDS",

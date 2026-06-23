@@ -1,15 +1,7 @@
-import os
-from typing import List, Tuple, Optional
-from dotenv import load_dotenv
-from langchain_core.documents import Document
-from langchain_core.tools import tool
-from langchain_tavily import TavilySearch
 import dashscope
-from app.utils.anime_trace import get_error_message, format_anime_result
-from app.agent.chroma_init import chroma_vector_store
-from app.agent.model.model import multi_embedding_model
+from langchain_core.tools import tool
 
-load_dotenv()
+from app.utils.anime_trace import get_error_message, format_anime_result
 
 # 配置 DashScope API 地址
 dashscope.base_http_api_url = "https://dashscope.aliyuncs.com/api/v1"
@@ -81,9 +73,4 @@ def anime_analysis(image_url: str) -> str:
     except Exception as e:
         return f"调用失败: {str(e)}"
 
-# web搜索工具,LangChain已封装，不需要@tool
-web_search = TavilySearch(
-    max_results=3,
-    topic="general",
-    api_key=os.environ.get("TAVILY_API_KEY"),
-)
+

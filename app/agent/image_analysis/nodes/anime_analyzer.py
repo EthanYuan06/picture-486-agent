@@ -5,7 +5,7 @@
 from langsmith import traceable
 
 from app.agent.model.model import deepseek_chat_model
-from app.agent.tools import anime_analysis as anime_tool
+from app.agent.image_upload.tool.tools import anime_analysis as anime_tool
 from app.common.logger import logger
 from app.utils.api_utils import safe_parse_json
 

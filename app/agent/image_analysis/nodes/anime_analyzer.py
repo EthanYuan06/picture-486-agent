@@ -3,11 +3,23 @@
 负责具体的图片分析逻辑（动漫/风景/通用）
 """
 from langsmith import traceable
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 
 from app.agent.model.model import deepseek_chat_model
 from app.agent.image_upload.tool.tools import anime_analysis as anime_tool
+from app.agent.schemas import AnimeInfoTranslation
 from app.common.logger import logger
-from app.utils.api_utils import safe_parse_json
+
+# 初始化翻译 Parser + Prompt Template
+anime_translation_prompt = ChatPromptTemplate.from_messages([
+    ("system", """你是专业的动漫翻译助手。
+将日文角色名和作品名翻译成中文常用译名。
+只返回 JSON 格式，不要其他内容。"""),
+    ("human", "角色名（日文）：{character_jp}\n作品名（日文）：{work_jp}")
+])
+anime_translation_parser = JsonOutputParser(pydantic_object=AnimeInfoTranslation)
+anime_translation_chain = anime_translation_prompt | deepseek_chat_model | anime_translation_parser
 
 
 # ===================== 动漫分析节点 =====================
@@ -126,7 +138,7 @@ async def anime_analyzer(state: dict) -> dict:
 
 def _translate_anime_info(character_jp: str, work_jp: str) -> dict:
     """
-    使用 DeepSeek 翻译日文动漫信息
+    使用 DeepSeek 翻译日文动漫信息（Output Parser 版本）
     
     Args:
         character_jp: 日文角色名
@@ -135,23 +147,15 @@ def _translate_anime_info(character_jp: str, work_jp: str) -> dict:
     Returns:
         包含中文字段名的字典
     """
-    prompt = f"""请将以下日文动漫信息翻译成中文：
-
-角色名（日文）：{character_jp}
-作品名（日文）：{work_jp}
-
-要求：
-1. 只返回 JSON 格式，不要其他内容
-2. 格式：{{"character": "中文角色名", "work": "中文作品名"}}
-3. 如果不知道官方译名，使用常见译名或音译
-4. 保持简洁，不要解释
-"""
-    
     try:
-        resp = deepseek_chat_model.invoke(prompt)
-        result = safe_parse_json(resp.content)
-        logger.info(f"[_translate_anime_info] 翻译结果: {result}")
-        return result
+        # 使用 Chain 自动解析和校验
+        result = anime_translation_chain.invoke({
+            "character_jp": character_jp,
+            "work_jp": work_jp
+        })
+        # result 是 AnimeInfoTranslation 对象，类型安全
+        logger.info(f"[_translate_anime_info] 翻译结果: {result.character} | {result.work}")
+        return {"character": result.character, "work": result.work}
     except Exception as e:
         logger.warning(f"[_translate_anime_info] 翻译失败: {str(e)}")
         return {"character": character_jp, "work": work_jp}

@@ -1,33 +1,62 @@
 """
 响应生成提示词模块
 负责将检索结果整理为用户友好的回复
+
+改造说明：
+- 使用 LangChain ChatPromptTemplate 替代 f-string 拼接
+- 结构化模板管理，提升可维护性
+- 保持向后兼容（导出函数接口不变）
 """
+from langchain_core.prompts import ChatPromptTemplate
+
+
+# 响应生成主模板
+response_template = ChatPromptTemplate.from_messages([
+    ("system", """你是「昴云助手」，专业的图片检索AI。请用简洁友好的语气回复用户，告知找到的图片信息。
+
+要求：
+1. 开头用「以下是为您找到的[主题]的图片：」
+2. 对每张图片的展示格式：「[序号] 图片名称：{名称}，简介：{简介}」
+   - **必须严格使用元数据中的简介字段，不要自行编造或解释**
+   - 如果某张图片没有简介，只写「图片名称：{名称}」即可，不要添加任何描述
+   - 绝对不要对图片内容进行推测、解读或自由发挥
+3. 结尾加一句「我还可以帮您推荐其他图片，如有需要请告诉我哦～」
+4. 保持自然友好，不要暴露技术细节"""),
+    ("human", """用户问题：{user_q}
+
+检索到的图片信息（每张图片包含名称和简介）：
+{context}
+
+请回答：""")
+])
 
 
 def get_response_generation_prompt(user_q: str, context: str) -> str:
     """
-    生成检索结果响应提示词
+    生成检索结果响应提示词（兼容旧接口）
     
     Args:
         user_q: 用户原始查询
         context: 检索到的图片信息（已格式化为「名称 + 简介」格式）
         
     Returns:
-        格式化的响应生成提示词
+        格式化的响应生成提示词字符串
     """
-    return (
-        f"你是「昴云助手」，专业的图片检索AI。请用简洁友好的语气回复用户，告知找到的图片信息。\n\n"
-        f"用户问题：{user_q}\n\n"
-        f"检索到的图片信息（每张图片包含名称和简介）：\n{context}\n\n"
-        f"要求：\n"
-        f"1. 开头用「以下是为您找到的[主题]的图片：」\n"
-        f"2. 对每张图片的展示格式：「[序号] 图片名称：{{名称}}，简介：{{简介}}」\n"
-        f"   - **必须严格使用元数据中的简介字段，不要自行编造或解释**\n"
-        f"   - 如果某张图片没有简介，只写「图片名称：{{名称}}」即可，不要添加任何描述\n"
-        f"   - 绝对不要对图片内容进行推测、解读或自由发挥\n"
-        f"3. 结尾加一句「我还可以帮您推荐其他图片，如有需要请告诉我哦～」\n"
-        f"4. 保持自然友好，不要暴露技术细节"
-    )
+    return response_template.format(user_q=user_q, context=context)
+
+
+def get_response_generation_prompt_value(user_q: str, context: str):
+    """
+    返回 LangChain PromptValue 对象（推荐用法）
+    
+    Args:
+        user_q: 用户原始查询
+        context: 检索到的图片信息
+        
+    Returns:
+        PromptValue 对象，可直接传给 LLM 的 invoke 方法
+    """
+    return response_template.invoke({"user_q": user_q, "context": context})
 
 
 def get_no_result_response() -> str:

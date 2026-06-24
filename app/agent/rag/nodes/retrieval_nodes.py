@@ -5,11 +5,14 @@
 from typing import List
 
 from langchain_core.documents import Document
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from langsmith import traceable
 
 from app.agent.config.chroma_config import chroma_vector_store
 from app.agent.config import workflow_config as config, parse_filters
 from app.agent.model.model import multi_embedding_model, deepseek_chat_model, rerank_model
+from app.agent.schemas import QueryRewriteResult
 # 改动：从本地 prompts 目录导入提示词
 from app.agent.rag.prompts import (
     get_image_rewrite_prompt,
@@ -19,13 +22,27 @@ from app.agent.rag.prompts import (
     get_fallback_response
 )
 
+# 初始化查询重写 Parser + Prompt Template
+query_rewrite_prompt = ChatPromptTemplate.from_messages([
+    ("system", """你是查询重写助手。
+将用户自然语言改写为适合向量检索的关键词，并提取期望返回的图片数量。
+
+要求：
+1. 关键词要简洁、核心语义明确
+2. 数量范围 1-10，默认 3
+3. 只返回 JSON 格式"""),
+    ("human", "{user_input}")
+])
+query_rewrite_parser = JsonOutputParser(pydantic_object=QueryRewriteResult)
+query_rewrite_chain = query_rewrite_prompt | deepseek_chat_model | query_rewrite_parser
+
 
 # ===================== 查询重写节点 =====================
 
 @traceable(run_type="chain", name="query_rewriter")  # 改动：添加 LangSmith 追踪
 async def query_rewriter(state: dict) -> dict:
     """
-    节点2：查询重写 + 数量提取
+    节点2：查询重写 + 数量提取（Output Parser 版本）
     调用 deepseek 文本模型将用户自然语言改写为检索关键词，并提取期望返回的图片数量
     Returns:
         rewritten_query: 重写后的检索关键词
@@ -34,45 +51,24 @@ async def query_rewriter(state: dict) -> dict:
     query = state.get("user_input", "").strip()
     image_url = state.get("image_url")  # 【新增】获取图片URL
 
-    # 改动：根据是否有图片调整提示词，使用提示词模块
-    if image_url:
-        # 图文检索：强调相似性
-        prompt = get_image_rewrite_prompt(query)
-    else:
-        # 纯文本检索：不需要强调相似性
-        prompt = get_text_rewrite_prompt(query)
-    
     try:
-        resp = await deepseek_chat_model.ainvoke(prompt)
-        result = resp.content.strip()
+        # 使用 Chain 自动解析和校验
+        result = await query_rewrite_chain.ainvoke({"user_input": query})
         
-        # 解析输出
-        rewritten = query  # 默认值
-        expected_count = config.DEFAULT_EXPECTED_COUNT  # 改动：使用配置常量
+        # result 是 QueryRewriteResult 对象，类型安全
+        logger.info(f"[查询重写] 关键词: {result.keywords}, 数量: {result.expected_count}")
         
-        for line in result.split('\n'):
-            line = line.strip()
-            if line.startswith('关键词:'):
-                rewritten = line.replace('关键词:', '').strip()
-            elif line.startswith('数量:'):
-                try:
-                    count_str = line.replace('数量:', '').strip()
-                    # 处理中文数字
-                    chinese_nums = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, 
-                                   '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
-                    if count_str in chinese_nums:
-                        expected_count = chinese_nums[count_str]
-                    else:
-                        expected_count = int(count_str)
-                    # 限制范围 1-10
-                    expected_count = max(1, min(10, expected_count))
-                except (ValueError, KeyError):
-                    expected_count = 3  # 解析失败使用默认值
+        return {
+            "rewritten_query": result.keywords,
+            "expected_count": result.expected_count
+        }
     except Exception as e:
-        rewritten = query
-        expected_count = 3
-
-    return {"rewritten_query": rewritten, "expected_count": expected_count}
+        logger.warning(f"[查询重写] Parser 失败，使用原始查询: {str(e)}")
+        # 降级：使用原始查询
+        return {
+            "rewritten_query": query,
+            "expected_count": config.DEFAULT_EXPECTED_COUNT
+        }
 
 
 # ===================== 多模态向量化节点 =====================

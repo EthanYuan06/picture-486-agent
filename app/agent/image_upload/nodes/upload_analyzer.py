@@ -2,17 +2,19 @@
 昴云助手 - 图片上传分析器模块
 负责图片上传时的智能分析（生成 name/introduction/category/tags）
 """
-import json
-import re
 import time
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.output_parsers import JsonOutputParser
 from langsmith import traceable
 
 from app.agent.model.model import qwen_vision_model
+from app.agent.schemas import ImageUploadAnalysis
 # 改动：从本地 prompts 目录导入提示词
 from app.agent.image_upload.prompts.image_upload_prompt import get_image_upload_analysis_prompt
 from app.common.logger import logger
-from app.utils.api_utils import safe_parse_json
+
+# 初始化 Parser（模块级复用）
+upload_analysis_parser = JsonOutputParser(pydantic_object=ImageUploadAnalysis)
 
 
 @traceable(run_type="chain", name="image_upload_analyzer")
@@ -71,15 +73,20 @@ async def image_upload_analyzer(state: dict) -> dict:
             ])
         ]
         
-        # 调用多模态模型
+        # 调用多模态模型 + Output Parser
         response = await qwen_vision_model.ainvoke(messages)
         logger.info(f"[image_upload_analyzer] LLM原始返回完整内容:\n{response.content}")
         
-        # 解析JSON（增强：处理Markdown代码块和额外文本）
-        result = safe_parse_json(response.content)
-        
-        # 如果解析失败，尝试提取JSON代码块
-        if not result or len(result) == 0:
+        # 使用 Output Parser 自动解析和校验
+        try:
+            result = upload_analysis_parser.parse(response.content)
+            logger.info(f"[image_upload_analyzer] Parser 解析成功")
+        except Exception as e:
+            logger.warning(f"[image_upload_analyzer] Parser 解析失败: {str(e)}，尝试手动提取JSON")
+            # 降级：尝试手动提取 JSON（保持向后兼容）
+            import json, re
+            result = None
+            
             # 尝试匹配 ```json ... ``` 或 ``` ... ``` 格式
             json_pattern = r'```(?:json)?\s*(\{.*?\})\s*```'
             match = re.search(json_pattern, response.content, re.DOTALL)
@@ -87,19 +94,25 @@ async def image_upload_analyzer(state: dict) -> dict:
                 try:
                     result = json.loads(match.group(1))
                     logger.info("[image_upload_analyzer] 从Markdown代码块中提取JSON成功")
-                except Exception as e:
-                    logger.warning(f"[image_upload_analyzer] 从代码块提取JSON失败: {str(e)}")
-            else:
-                # 尝试直接查找最外层的 {...}
+                except Exception as e2:
+                    logger.warning(f"[image_upload_analyzer] 从代码块提取JSON失败: {str(e2)}")
+            
+            # 尝试直接查找最外层的 {...}
+            if not result:
                 brace_match = re.search(r'\{.*\}', response.content, re.DOTALL)
                 if brace_match:
                     try:
                         result = json.loads(brace_match.group(0))
                         logger.info("[image_upload_analyzer] 从文本中提取JSON对象成功")
-                    except Exception as e:
-                        logger.warning(f"[image_upload_analyzer] 提取JSON对象失败: {str(e)}")
+                    except Exception as e3:
+                        logger.warning(f"[image_upload_analyzer] 提取JSON对象失败: {str(e3)}")
+            
+            # 如果都失败，使用默认值
+            if not result:
+                logger.error("[image_upload_analyzer] 所有解析方式均失败，使用默认值")
+                result = {}
         
-        # 验证必要字段
+        # 构建标准化结果（Pydantic 已校验字段类型）
         analysis_result = {
             "name": result.get("name", "未命名图片"),
             "introduction": result.get("introduction", "暂无描述"),

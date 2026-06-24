@@ -1,6 +1,10 @@
 """
-昴云助手 - 图片分析路由模块
+云助手 - 图片分析路由模块
 负责图片类型判断和二级路由分发
+
+Phase 2 改动：
+- image_analysis_router 保留为主图入口点（向后兼容）
+- route_after_image_analysis 作为子图内部的条件边路由函数
 """
 from langsmith import traceable
 
@@ -8,12 +12,18 @@ from app.agent.model.model import deepseek_chat_model
 from app.common.logger import logger
 
 
-# ===================== 图片分析二级路由节点 =====================
+# ===================== 图片分析二级路由节点（向后兼容）=====================
 
 @traceable(run_type="chain", name="image_analysis_router")
 async def image_analysis_router(state: dict) -> dict:
     """
     图片分析二级路由：调用 DeepSeek 判断图片类型
+    
+    Phase 2 说明：
+    - 此节点保留供主图直接使用（向后兼容）
+    - Supervisor Agent 内部也会调用此函数进行分类
+    - 未来可考虑移除此节点，完全由 Supervisor 接管
+    
     输出：{"analysis_type": "attraction" | "anime_analysis" | "common"}
     """
     user_input = state.get("user_input", "")

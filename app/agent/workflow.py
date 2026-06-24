@@ -25,13 +25,15 @@ from app.agent.rag import (
 # 改动：从闲聊业务模块导入闲聊节点
 from app.agent.chat.nodes.direct_chat import _direct_chat
 from app.agent.public_nodes.output_nodes import _format_output
-# 改动：从图片内容分析模块导入节点
+# 改动：从图片内容分析模块导入状态和子图构建器
+from app.agent.image_analysis import (
+    ImageAnalysisState,
+    build_subgraph as build_image_analysis_subgraph,
+)
+# 改动：从图片内容分析模块导入节点（向后兼容，供主图直接使用）
 from app.agent.image_analysis import (
     image_analysis_router,
-    anime_analyzer,
-    analysis_response_formatter,
-    _attraction_placeholder,
-    _common_placeholder
+    route_after_image_analysis,
 )
 # 改动：从智能上传模块导入节点
 from app.agent.image_upload import (
@@ -73,11 +75,20 @@ def build_chat_workflow():
     builder.add_node("_format_output", _format_output)
     
     # 图片分析相关节点
+    # 改动：注册 image_analysis_router 作为主图入口点
     builder.add_node("image_analysis_router", image_analysis_router)
-    builder.add_node("anime_analyzer", anime_analyzer)
-    builder.add_node("analysis_response_formatter", analysis_response_formatter)
-    builder.add_node("_attraction_placeholder", _attraction_placeholder)  # TODO
-    builder.add_node("_common_placeholder", _common_placeholder)  # TODO
+    
+    # 改动：编译子图并注册为单个节点
+    image_analysis_subgraph = build_image_analysis_subgraph()
+    builder.add_node("image_analysis_chain", image_analysis_subgraph)
+    
+    # TODO: 占位节点保留供未来扩展使用
+    # from app.agent.image_analysis.nodes.anime_analyzer import (
+    #     _attraction_placeholder,
+    #     _common_placeholder
+    # )
+    # builder.add_node("_attraction_placeholder", _attraction_placeholder)
+    # builder.add_node("_common_placeholder", _common_placeholder)
     
     # 新增：图片上传相关节点
     builder.add_node("image_upload_analyzer", image_upload_analyzer)
@@ -113,29 +124,22 @@ def build_chat_workflow():
     builder.add_edge("_direct_chat", "_format_output")
     
     # === 图片分析链路 ===
-    # 简化路由：所有图片分析类型暂时都走 anime_analyzer
-    builder.add_edge("image_analysis_router", "anime_analyzer")
+    # 改动：简化为 router → 子图
+    builder.add_edge("image_analysis_router", "image_analysis_chain")
     
-    # TODO: 未来扩展时可以添加条件边
+    # TODO: 未来扩展时可以添加条件边（当前由子图内部处理）
     # builder.add_conditional_edges(
     #     "image_analysis_router",
     #     route_after_image_analysis,
     #     {
     #         "anime_analyzer": "anime_analyzer",
-    #         "attraction_placeholder": "_attraction_placeholder",
-    #         "common_placeholder": "_common_placeholder",
+    #         "_attraction_placeholder": "_attraction_placeholder",
+    #         "_common_placeholder": "_common_placeholder",
     #     }
     # )
     
-    # 动漫分析节点 → 格式化节点
-    builder.add_edge("anime_analyzer", "analysis_response_formatter")
-    
-    # TODO: 预留分支（当前未使用）
-    # builder.add_edge("_attraction_placeholder", "analysis_response_formatter")
-    # builder.add_edge("_common_placeholder", "analysis_response_formatter")
-    
-    # 格式化节点到出口
-    builder.add_edge("analysis_response_formatter", "_format_output")
+    # 改动：子图出口直接连接到格式化节点
+    builder.add_edge("image_analysis_chain", "_format_output")
     
     # === 图片上传链路 ===
     # 分析节点 → 回调节点 → 格式化节点

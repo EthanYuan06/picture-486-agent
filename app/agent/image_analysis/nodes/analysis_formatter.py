@@ -5,7 +5,7 @@
 from langsmith import traceable
 
 from app.agent.model.model import deepseek_chat_model
-from app.agent.prompts import get_analysis_prompt_template
+from app.agent.image_analysis.prompts import get_analysis_prompt_template
 from app.common.logger import logger
 
 

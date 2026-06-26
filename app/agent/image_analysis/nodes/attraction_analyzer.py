@@ -10,7 +10,7 @@ Phase 3 新增：
 from langsmith import traceable
 from langchain_core.prompts import ChatPromptTemplate
 
-from app.agent.model.model import deepseek_chat_model
+from app.agent.model.model import qwen_vision_model
 from app.agent.image_analysis.nodes.base_agent import BaseSpecialistAgent
 from app.common.logger import logger
 
@@ -112,13 +112,17 @@ class AttractionAnalysisAgent(BaseSpecialistAgent):
 2. 适当使用emoji让内容更生动（如🏞️、🌸、⛩️等）
 3. 如果无法确定具体景点，就描述看到的风景特征
 4. 突出景点的独特之处和推荐理由"""),
-            ("human", "用户问题：{user_input}\n\n请分析这张图片中的景点信息。")
+            ("human", [
+                {"type": "text", "text": "用户问题：{user_input}\n\n请分析这张图片中的景点信息。"},
+                {"type": "image_url", "image_url": {"url": "{image_url}"}}
+            ])
         ])
         
         try:
-            chain = prompt_template | deepseek_chat_model
+            chain = prompt_template | qwen_vision_model
             response = await chain.ainvoke({
-                "user_input": user_input or "这是什么地方？"
+                "user_input": user_input or "这是什么地方？",
+                "image_url": image_url
             })
             
             # 解析LLM返回的文本为结构化数据

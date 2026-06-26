@@ -87,10 +87,10 @@ class DashScopeRerankModel:
     
     def rerank(self, query: str, documents: List[str], top_n: int = 3) -> List[int]:
         """
-        对文档列表进行重排序
+        纯文本重排序
         Args:
             query: 查询文本
-            documents: 候选文档列表
+            documents: 候选文档列表（纯文本）
             top_n: 返回前 N 个最相关的文档索引
         Returns:
             重排后的文档索引列表（按相关性从高到低）
@@ -102,8 +102,9 @@ class DashScopeRerankModel:
             "Content-Type": "application/json"
         }
         
+        # 【修复】使用 model 而非 entity
         data = {
-            "entity": "qwen3-vl-rerank",
+            "model": "qwen3-vl-rerank",
             "input": {
                 "query": query,
                 "documents": documents
@@ -124,6 +125,57 @@ class DashScopeRerankModel:
         
         result = response.json()
         # 返回格式: {"output": {"results": [{"index": 2, "score": 0.95}, ...]}}
+        indices = [item["index"] for item in result["output"]["results"]]
+        return indices
+    
+    def rerank_multimodal(self, query: str, documents_with_images: List[dict], 
+                          user_image_url: str = None, top_n: int = 3) -> List[int]:
+        """
+        多模态重排序（支持纯文本和图文两种场景）
+        
+        Args:
+            query: 查询文本
+            documents_with_images: 候选文档列表，每个元素为 dict，必须包含 'text' 和 'image' 字段
+                                  例如: [{"text": "描述", "image": "图片URL"}, ...]
+            user_image_url: 用户上传图片的URL（仅图文检索时传入，纯文本检索时为None）
+            top_n: 返回前 N 个最相关的文档索引
+        
+        Returns:
+            重排后的文档索引列表（按相关性从高到低）
+        """
+        import requests
+        
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # 构建 query：如果有用户图片则添加
+        query_obj = {"text": query}
+        if user_image_url:
+            query_obj["image"] = user_image_url
+        
+        data = {
+            "model": "qwen3-vl-rerank",
+            "input": {
+                "query": query_obj,
+                "documents": documents_with_images  # 直接传入带图片的文档列表
+            },
+            "parameters": {
+                "return_documents": False,
+                "top_n": top_n
+            }
+        }
+        
+        response = requests.post(
+            self.base_url, 
+            headers=headers, 
+            json=data, 
+            timeout=15  # 多模态需要更长时间
+        )
+        response.raise_for_status()
+        
+        result = response.json()
         indices = [item["index"] for item in result["output"]["results"]]
         return indices
 

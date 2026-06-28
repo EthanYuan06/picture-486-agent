@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "bing_search": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "bing-cn-mcp"
+      ],
+      "transport": "stdio"
+    }
+  }
+}
